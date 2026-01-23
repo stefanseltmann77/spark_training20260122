@@ -1,0 +1,16 @@
+[project]
+name = "spark-training"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "pyspark>=4.1.0",
+    "pandas~=2.0",
+    "matplotlib",
+    "pytest",
+    "confluent-kafka>=2.13.0",
+    "plotly>=6.5.2",
+    "pyarrow>=23.0.0",
+    "delta-spark>=4.0.1",
+    "databricks-cli>=0.18.0",
+]

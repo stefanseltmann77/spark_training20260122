@@ -1,0 +1,48 @@
+version: "3.9"
+
+networks:
+  spark-net:
+    driver: bridge
+
+
+services:
+  zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - spark-net
+
+  kafka:
+    image: 'bitnami/kafka:latest'
+    environment:
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+#      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    networks:
+      - spark-net
+
+  spark_container:
+    build: .
+    networks:
+      - spark-net
+    command: tail -F anything
+    environment:
+      - SPARK_LOCAL_IP=127.0.0.1
+    ports:
+      - "4040:4040"
+      - "4041:4041"
+      - "4042:4042"
+      - "4043:4043"
+      - "4044:4044"
+      - "4045:4045"
+    volumes:
+      - .:/root/spark_training
+    hostname: localhost
