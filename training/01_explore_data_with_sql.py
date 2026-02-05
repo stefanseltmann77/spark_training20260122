@@ -3,7 +3,7 @@ from spark_setup_spark3 import get_spark, path_trainingdata
 
 spark = get_spark()
 
-# %% Exercise 01: Read the date from  "./training_data/books.csv"
+# %% Exercise 01: Read the data from  "./training_data/books.csv"
 # Use the SparkSession "spark" and read a csv as a DataFrame called "df".
 # The file has a header. The schema can be inferred.
 

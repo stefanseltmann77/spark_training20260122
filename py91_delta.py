@@ -11,7 +11,7 @@ from spark_setup_spark3 import get_spark, path_demodata
 
 PATH = "delta/recipe_2023"
 
-spark = get_spark()
+spark = get_spark(profile_name='databricks_free')
 
 df = spark.read.option("encoding", "utf8") \
     .csv((path_demodata / 'recipeData.csv').as_posix(),
@@ -23,27 +23,16 @@ df = spark.read.option("encoding", "utf8") \
 
 df.show()
 
-# write to a location unmanaged!
-# df.write.format('delta').save(PATH,  mode='overwrite')
-# or
-df.write.save(PATH, 'delta', mode='overwrite')
-
 # write as managed table
 df.write.saveAsTable('dt_recipedata', format='delta')
 # see table in metadata
 spark.catalog.listTables()
 
-# every_time you write new data the old will be kept
-df.write.save(PATH, "delta", mode='overwrite')
-df.write.save(PATH, "delta", mode='overwrite')
-df.write.save(PATH, "delta", mode='overwrite')
 
 # %% how can I check the revisions? ####################################################################################
 
 # register the table
-
-deltatab = DeltaTable.forPath(spark, PATH)
-
+deltatab = DeltaTable.forName(spark, 'dt_recipedata')
 deltatab.history()
 
 # show me version history
@@ -53,79 +42,31 @@ deltatab.history(1).show()
 # show the operational metrics
 deltatab.history().select("operationMetrics").show(truncate=False)
 
-df = spark.read.format('delta').load(PATH)
-df.count()
+
 
 # %% how can I check the table metadata? ###############################################################################
 
-# for the unmanaged:
-deltatab = DeltaTable.forPath(spark, PATH)
-deltatab.detail().show(truncate=False, vertical=True)  # the location is our path
-
-# now for the managed:
 deltatab_managed = DeltaTable.forName(spark, 'dt_recipedata')
 deltatab_managed.detail().show(truncate=False, vertical=True)  # the location is in a spark warehouse
 
 
-# %% ACID: Read and write from the same table: #########################################################################
-# What if we read and write from the same parquet table.
-df_csv = spark.read.option("encoding", "utf8") \
-    .csv((path_demodata / 'recipeData.csv').as_posix(),
-         inferSchema=True,
-         header=True).withColumnRenamed("Size(L)", "Size_L")
-df_csv.write.parquet('tmp/parquet', mode='overwrite')
-
-df_parquet = spark.read.parquet('tmp/parquet')
-try:
-    df_parquet.write.parquet('tmp/parquet', mode='overwrite')
-except:
-    print("Reading and writing from the same parquet is not allowed!")
-
-# Let's try the same with delta
-df = spark. \
-    read. \
-    load(PATH, 'delta')
-df.write.save(PATH, 'delta', mode='append')
-# works without error
-
-# %% Reading Delta as Parquet ##########################################################################################
-df_csv = spark.read.option("encoding", "utf8") \
-    .csv((path_demodata / 'recipeData.csv').as_posix(),
-         inferSchema=True,
-         header=True).withColumnRenamed("Size(L)", "Size_L")
-tmp_delta_path = 'tmp/delta'
-
-df_csv.write.save(tmp_delta_path, 'delta', mode='overwrite')
-df_csv.write.save(tmp_delta_path, 'delta', mode='overwrite')
-
-try:
-    assert spark.read.format("parquet").load(path=tmp_delta_path).count() == \
-           spark.read.format("delta").load(path=tmp_delta_path).count()
-except AssertionError:
-    print("Assertion error, because reading delta as plain parquet, will also read deleted rows.")
-deltatab = DeltaTable.forPath(spark, tmp_delta_path)
-
 # %% load the data depending on time or version ########################################################################
 
 # based on the version number
-df = spark. \
-    read. \
-    format("delta"). \
-    option("versionAsOf", 0). \
-    load(PATH)
+df = (spark.read.
+    option("versionAsOf", 0).
+      table('dt_recipedata'))
 
 # based on the time => timetravel
-df = spark. \
-    read. \
-    format("delta"). \
-    option("timestampAsOf", '2023-03-31 07:40:00'). \
-    load(PATH)
+df = (spark.
+    read.
+    option("timestampAsOf", '2023-03-31 07:40:00').
+    table('dt_recipedata'))
 
 # cleanup of old versions
 deltatab.history().show()
-spark.conf.set("spark.databricks.delta.retentionDurationCheck.enabled", False)
+# spark.conf.set("spark.databricks.delta.retentionDurationCheck.enabled", False)
 deltatab.vacuum(retentionHours=0)
-spark.sparkContext.uiWebUrl
 
 # %% try deletes and updates
 
@@ -224,7 +165,7 @@ delta_scd2.toDF().where('BeerID = 274').show(truncate=False)
 
 # %% Optimize #########################################################################################################
 
-df = spark.read.option("encoding", "utf8") \
+df = spark.read.option("encoding", "utf-8") \
     .csv("./data/recipeData.csv",
          inferSchema=True,
          header=True).withColumnRenamed("Size(L)", "Size_L")

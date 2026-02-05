@@ -8,6 +8,7 @@ from spark_setup_spark3 import get_spark
 
 spark = get_spark()
 spark.conf.set("spark.sql.shuffle.partitions", "20")
+spark.conf.set("spark.sql.streaming.stateStore.rocksdb.changelogCheckpointing.enabled", "true")
 
 #########################################################
 from pyspark.sql.types import StructType, StructField, StringType, LongType, TimestampType, DoubleType
@@ -136,7 +137,7 @@ stream_with_watermark = stream_handle.withWatermark("DrinkingTime", "5 minute")
 stream_query: StreamingQuery = calc_consumer_frequs_last_interval(stream_with_watermark) \
     .writeStream.format("console") \
     .outputMode("update") \
-    .option("checkpointLocation", "myloc1") \
+    .option("checkpointLocation", "myloc") \
     .start()
 
 stream_query.stop()
